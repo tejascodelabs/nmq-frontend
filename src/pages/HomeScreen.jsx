@@ -361,11 +361,11 @@ export default function HomeScreen() {
                                                         {item.name}
                                                     </div>
 
-                                                    {item.description && (
+                                                    {/* {item.description && (
                                                         <div className="text-xs text-gray-500 mt-1 line-clamp-2">
                                                             {item.description}
                                                         </div>
-                                                    )}
+                                                    )} */}
 
                                                     <div className="text-xs font-bold text-[#fc8019] mt-0.5">
                                                         ₹{item.price}
@@ -484,9 +484,9 @@ function ShopCard({ shop, onImages, onMenu }) {
             <div>
                 <div className="flex gap-3 sm:gap-4">
                     <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden relative bg-gray-100 shrink-0 shadow-inner">
-                        {shop.profile_image ? (
+                        {shop.profileImage ? (
                             <img
-                                src={shop.profile_image}
+                                src={shop.profileImage}
                                 alt={shop.name}
                                 className="w-full h-full object-cover"
                             />

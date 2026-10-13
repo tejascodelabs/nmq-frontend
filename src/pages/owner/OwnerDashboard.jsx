@@ -527,16 +527,16 @@ const toggleQueue = async () => {
             label: "Today's Summary",
             icon: BarChart3Icon,
           },
-          {
-            key: "message",
-            label: "Send Msg to Customers",
-            icon: MessageSquareIcon,
-          },
-          {
-            key: "staff",
-            label: "Staff Status",
-            icon: UsersIcon,
-          },
+          // {
+          //   key: "message",
+          //   label: "Send Msg to Customers",
+          //   icon: MessageSquareIcon,
+          // },
+          // {
+          //   key: "staff",
+          //   label: "Staff Status",
+          //   icon: UsersIcon,
+          // },
         ].map(({ key, label, icon: Icon }) => {
           const active = activeSections.includes(key);
 
@@ -659,7 +659,7 @@ const toggleQueue = async () => {
       )}
 
       {/* BROADCAST MESSAGE */}
-      {isSectionActive('message') && (
+      {/* {isSectionActive('message') && (
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-base font-bold text-slate-900">📢 Send Message to Customers</h2>
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
@@ -728,10 +728,10 @@ const toggleQueue = async () => {
             </div>
           </div>
         </section>
-      )}
+      )} */}
 
       {/* STAFF STATUS */}
-      {isSectionActive('staff') && (
+      {/* {isSectionActive('staff') && (
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-base font-bold text-slate-900">👥 Staff Status</h2>
 
@@ -794,7 +794,7 @@ const toggleQueue = async () => {
             </div>
           )}
         </section>
-      )}
+      )} */}
     </div>
   );
 }
