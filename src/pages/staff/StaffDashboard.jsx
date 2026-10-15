@@ -158,7 +158,6 @@ export default function StaffDashboard() {
   // REAL-TIME SOCKET.IO ENGINE (Fixed Immutable State Sync)
   // =====================================================
   useEffect(() => {
-    debugger
     if (!shop?.id) return;
 
     const socket = io(API_BASE_URL, {

@@ -11,6 +11,8 @@ import {
   Megaphone,
 } from 'lucide-react'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL
+
 // Dummy feedback options
 const FEEDBACK_OPTIONS = [
   'Easy Booking',
@@ -55,15 +57,13 @@ export default function CustomerArrived() {
 
   // Token number display string
   const tokenDisplay = activeToken
-    ? `${activeToken.queueType}-${activeToken.tokenNo}`
+    ? `${activeToken.queueType || activeToken.queue_type}-${activeToken.tokenNo || activeToken.token_no}`
     : '--'
 
-  // Handle return to shop list
   const handleBrowseShops = () => {
     navigate('/shop-list')
   }
 
-  // Toggle selection of feedback chips
   const toggleOption = (option) => {
     setLikedOptions((prev) =>
       prev.includes(option)
@@ -72,8 +72,8 @@ export default function CustomerArrived() {
     )
   }
 
-  // Handle feedback form submission (Simulated)
-  const handleSubmitFeedback = () => {
+  // Handle feedback form submission with backend API integration
+  const handleSubmitFeedback = async () => {
     if (submitted || submitting) return
 
     if (rating === 0 && likedOptions.length === 0 && feedback.trim() === '') {
@@ -83,14 +83,40 @@ export default function CustomerArrived() {
 
     setSubmitting(true)
 
-    // Simulate async submission process
-    setTimeout(() => {
-      setSubmitting(false)
+    try {
+      const payload = {
+        shopId: activeToken.shopId || activeToken.shop_id,
+        tokenId: activeToken.id,
+        customerName: activeToken.name || activeToken.customer_name || 'Guest',
+        mobile: activeToken.mobile || activeToken.phone || '',
+        rating: rating > 0 ? rating : null,
+        likedOptions,
+        feedbackText: feedback.trim() || null,
+      }
+
+      const response = await fetch(`${API_BASE_URL}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to submit feedback')
+      }
+
       setSubmitted(true)
-    }, 1000)
+    } catch (error) {
+      console.error('Feedback submission error:', error)
+      alert(error.message || 'Could not submit feedback. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  // Dynamic character count color indicator
   const getCharCountColor = () => {
     if (feedback.length > 260) return 'text-red-600'
     if (feedback.length > 200) return 'text-amber-600'
@@ -102,9 +128,6 @@ export default function CustomerArrived() {
       <div className="w-full max-w-md text-center z-10">
         {!submitted ? (
           <>
-            {/* =============================================
-                SUCCESS BADGE
-            ============================================= */}
             <div className="relative w-28 h-20 mx-auto mb-2">
               <div className="absolute left-1/2 -top-2.5 -translate-x-1/2 w-20 h-20 rounded-full bg-emerald-500/10 shadow-[0_0_50px_rgba(34,197,94,0.18)]" />
               <div className="arr-tick absolute left-1/2 top-0 -translate-x-1/2 w-16 h-16 rounded-full bg-gradient-to-br from-emerald-600 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
@@ -112,13 +135,10 @@ export default function CustomerArrived() {
               </div>
             </div>
 
-            {/* =============================================
-                WELCOME HEADER
-            ============================================= */}
             <h1 className="arr-d1 text-gray-900 font-extrabold text-3xl sm:text-4xl mb-3">
               Welcome Back,{' '}
               <span className="text-orange-600">
-                {activeToken?.name || 'Guest'}
+                {activeToken?.name || activeToken?.customer_name || 'Guest'}
               </span>
             </h1>
 
@@ -130,21 +150,16 @@ export default function CustomerArrived() {
               Enjoy your meal!
             </p>
 
-            {/* =============================================
-                QUEUE TOKEN CARD
-            ============================================= */}
             <div className="arr-d2 bg-white rounded-2xl p-5 border border-[#F3E5D0] shadow-sm flex flex-col mt-6">
               <div className="text-xs font-bold text-[#8A7F71] mb-4 uppercase tracking-wider text-center">
                 Your Queue Token
               </div>
 
               <div className="flex items-center gap-4">
-                {/* Icon */}
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-600/30">
                   <ClipboardList className="w-7 h-7 stroke-[2.3]" />
                 </div>
 
-                {/* Token Number */}
                 <div className="flex-1 text-left">
                   <div className="text-xs text-[#8A7F71] font-semibold mb-1">
                     TOKEN NUMBER
@@ -154,22 +169,17 @@ export default function CustomerArrived() {
                   </div>
                 </div>
 
-                {/* Divider */}
                 <div className="w-px self-stretch bg-[#ECE2D3] my-1" />
 
-                {/* Guests */}
                 <div className="flex flex-col text-left">
                   <div className="text-xs text-[#8A7F71]">Guests</div>
                   <div className="text-sm font-bold text-[#2B2118] whitespace-nowrap">
-                    {activeToken?.groupSize || 1} People
+                    {activeToken?.groupSize || activeToken?.group_size || 1} People
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* =============================================
-                TODAY'S VISIT SUMMARY
-            ============================================= */}
             <div className="arr-d3 bg-[#F0F9EE] rounded-2xl border border-[#DCEFD6] overflow-hidden mt-5">
               <div className="flex items-center gap-2 px-4 py-3.5 border-b border-[#DCEFD6]">
                 <ClipboardList className="w-4 h-4 text-emerald-600" />
@@ -179,7 +189,6 @@ export default function CustomerArrived() {
               </div>
 
               <div className="grid grid-cols-3 py-5 px-3 text-center">
-                {/* Total Wait */}
                 <div className="relative px-2 border-r border-[#DCEFD6]">
                   <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 shadow-sm">
                     <Clock className="w-4 h-4 text-emerald-600" />
@@ -192,7 +201,6 @@ export default function CustomerArrived() {
                   </div>
                 </div>
 
-                {/* Arrived At */}
                 <div className="relative px-2 border-r border-[#DCEFD6]">
                   <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 shadow-sm">
                     <Timer className="w-4 h-4 text-emerald-600" />
@@ -203,7 +211,6 @@ export default function CustomerArrived() {
                   </div>
                 </div>
 
-                {/* Queue Ahead */}
                 <div className="px-2">
                   <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center mx-auto mb-2.5 shadow-sm">
                     <Users className="w-4 h-4 text-emerald-600" />
@@ -216,9 +223,6 @@ export default function CustomerArrived() {
               </div>
             </div>
 
-            {/* =============================================
-                RATING SECTION
-            ============================================= */}
             <div className="arr-d3 bg-white rounded-2xl p-5 border border-[#F3E5D0] shadow-sm mt-5">
               <h3 className="m-0 text-gray-900 text-lg font-bold">
                 Rate Your Experience
@@ -251,9 +255,6 @@ export default function CustomerArrived() {
               </div>
             </div>
 
-            {/* =============================================
-                WHAT DID YOU LIKE?
-            ============================================= */}
             <div className="arr-d3 bg-white rounded-2xl p-5 border border-[#F3E5D0] shadow-sm mt-5 text-left">
               <h3 className="m-0 text-gray-900 text-lg font-bold text-center">
                 What did you like?
@@ -283,9 +284,6 @@ export default function CustomerArrived() {
               </div>
             </div>
 
-            {/* =============================================
-                ADDITIONAL COMMENTS
-            ============================================= */}
             <div className="arr-d3 bg-white rounded-2xl p-5 border border-[#F3E5D0] shadow-sm mt-5 text-left">
               <h3 className="m-0 text-gray-900 text-lg font-bold text-center">
                 Anything else you'd like to tell us?
@@ -312,9 +310,6 @@ export default function CustomerArrived() {
               </div>
             </div>
 
-            {/* =============================================
-                DUMMY ADVERTISEMENT BANNER
-            ============================================= */}
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl p-4 shadow-md mt-5 flex items-center justify-between">
               <div className="flex items-center gap-3 text-left">
                 <Megaphone className="w-6 h-6 shrink-0" />
@@ -328,9 +323,6 @@ export default function CustomerArrived() {
               </span>
             </div>
 
-            {/* =============================================
-                SUBMIT BUTTON
-            ============================================= */}
             <button
               type="button"
               onClick={handleSubmitFeedback}
@@ -345,9 +337,6 @@ export default function CustomerArrived() {
             </button>
           </>
         ) : (
-          /* =================================================
-              AFTER SUBMISSION SCREEN
-          ================================================= */
           <div className="min-h-[75vh] flex flex-col justify-center items-center py-8">
             <div className="thank-you-pop w-24 h-24 rounded-full bg-gradient-to-br from-emerald-600 to-emerald-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/30 mb-6">
               <BadgeCheck className="w-14 h-14 stroke-[2.5]" />
@@ -373,7 +362,6 @@ export default function CustomerArrived() {
               </p>
             </div>
 
-            {/* BROWSE SHOPS BUTTON */}
             <button
               type="button"
               onClick={handleBrowseShops}

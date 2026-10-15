@@ -22,6 +22,7 @@ export default function FinalCall() {
 
   const [pageReady, setPageReady] = useState(false)
   const [liveToken] = useState(routeToken || null)
+  console.log("liveToken",liveToken)
   const [seconds, setSeconds] = useState(FINAL_CALL_DURATION)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -58,7 +59,7 @@ export default function FinalCall() {
     const playBell = () => {
       navigator.vibrate?.([500, 300, 500, 300, 500])
       bellRef.current.currentTime = 0
-      bellRef.current.play().catch(() => {})
+      bellRef.current.play().catch(() => { })
     }
 
     playBell()
@@ -123,8 +124,8 @@ export default function FinalCall() {
       console.error("I'm Here failed:", error)
       setError(
         error.response?.data?.message ||
-          error.message ||
-          "Could not confirm your arrival."
+        error.message ||
+        "Could not confirm your arrival."
       )
     } finally {
       setLoading(false)
@@ -133,14 +134,13 @@ export default function FinalCall() {
 
   if (!liveToken) return null
 
-  const tokenNum = liveToken?.token_no || '00'
-  const qType = liveToken?.queue_type || 'A'
+  const tokenNum = liveToken?.tokenNo || '00'
+  const qType = liveToken?.queueType || 'A'
 
   return (
     <div
-      className={`min-h-screen w-full bg-[#F8F4EA] bg-top bg-repeat-y flex justify-center p-3 sm:p-5 md:p-8 transition-all duration-450 ease-out ${
-        pageReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-      }`}
+      className={`min-h-screen w-full bg-[#F8F4EA] bg-top bg-repeat-y flex justify-center p-3 sm:p-5 md:p-8 transition-all duration-450 ease-out ${pageReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+        }`}
       style={{
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: '100% auto'
@@ -165,7 +165,7 @@ export default function FinalCall() {
 
       {/* CONTAINER */}
       <div className="w-full max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-4xl min-h-[calc(100vh-40px)] flex flex-col gap-3.5 sm:gap-5 md:gap-6">
-        
+
         {/* HEADER / BELL BANNER */}
         <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 text-center pt-2">
           <div className="fc-bell w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-[#FFF5EB] to-[#FFE7C8] border border-[#F3DEC2] shadow-[0_6px_16px_rgba(242,121,58,0.12)] flex items-center justify-center shrink-0">
@@ -214,9 +214,8 @@ export default function FinalCall() {
 
           <div className="text-center">
             <div
-              className={`text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-none ${
-                seconds <= 15 ? 'fc-timer-low text-red-600' : 'text-emerald-600'
-              }`}
+              className={`text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-none ${seconds <= 15 ? 'fc-timer-low text-red-600' : 'text-emerald-600'
+                }`}
             >
               {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
             </div>
@@ -264,11 +263,8 @@ export default function FinalCall() {
         {/* ADVERTISEMENT */}
         <div className="mt-1">
           <AdvertisementCarousel
-            shopId={liveToken?.shop_id}
-            tokenId={liveToken?.id}
-            placement="final_call"
-            height={136}
-            borderRadius={18}
+            shopId={null}
+            placement="shop_list"
           />
         </div>
 
