@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Html5Qrcode } from 'html5-qrcode'
-import { 
-  ArrowLeft, 
-  Camera, 
-  Lightbulb, 
-  CheckCircle2, 
-  AlertCircle 
+import {
+  ArrowLeft,
+  Camera,
+  Lightbulb,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react'
 
 // Original asset imports preserved
@@ -47,25 +47,35 @@ export default function ScanQRCode() {
 
         scannerRef.current = null
 
-        // Pass decoded QR data to the confirmation route or state handler
         if (!decodedText) {
           setError('Invalid QR code scanned')
           setScanning(true)
           return
         }
 
-        navigate('/details', {
-          state: { qrData: decodedText },
+        // QR URL ya text se ID extract karna
+        let id = decodedText.trim()
+        try {
+          const url = new URL(decodedText)
+          const segments = url.pathname.split('/').filter(Boolean)
+          id = segments[segments.length - 1] || decodedText
+        } catch (e) {
+          const parts = decodedText.split('/')
+          id = parts[parts.length - 1] || decodedText
+        }
+
+        // Direct /details/:id par navigate karna
+        navigate(`/details/${id}`, {
           replace: true
         })
       },
-      () => {}
+      () => { }
     )
 
     return () => {
       try {
         if (scannerRef.current?.isScanning) {
-          scannerRef.current.stop().catch(() => {})
+          scannerRef.current.stop().catch(() => { })
         }
       } catch (e) {
         // Cleanup error suppression
@@ -102,7 +112,7 @@ export default function ScanQRCode() {
 
       {/* Main Responsive Wrapper */}
       <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto overflow-hidden relative px-4 sm:px-6">
-        
+
         {/* Top Header Controls */}
         <div className="relative pt-4 sm:pt-6 z-10 flex items-center justify-between">
           <button
@@ -139,7 +149,7 @@ export default function ScanQRCode() {
                 id="qr-reader"
                 className="w-full max-w-[420px] mx-auto aspect-square overflow-hidden rounded-3xl bg-transparent relative"
               />
-              
+
               {/* Laser Scan Line */}
               <div className="absolute left-[4%] right-[4%] h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent animate-scan-line pointer-events-none" />
             </div>

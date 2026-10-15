@@ -55,7 +55,7 @@ export default function CustomerArrived() {
 
   // Token number display string
   const tokenDisplay = activeToken
-    ? `${activeToken.queue_type}-${activeToken.token_no}`
+    ? `${activeToken.queueType}-${activeToken.tokenNo}`
     : '--'
 
   // Handle return to shop list
@@ -161,7 +161,7 @@ export default function CustomerArrived() {
                 <div className="flex flex-col text-left">
                   <div className="text-xs text-[#8A7F71]">Guests</div>
                   <div className="text-sm font-bold text-[#2B2118] whitespace-nowrap">
-                    {activeToken?.group_size || 1} People
+                    {activeToken?.groupSize || 1} People
                   </div>
                 </div>
               </div>

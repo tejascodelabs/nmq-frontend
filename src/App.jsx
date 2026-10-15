@@ -39,10 +39,11 @@ import {
   Routes,
 } from "react-router-dom";
 
-import ScanQRCode from "./pages/ScanQRCode";
-import ConfirmDetails from "./pages/ConfirmDetails";
 import HomeScreen from "./pages/HomeScreen";
-import TokenConfirmed from "./pages/TokenConfirmed";
+import ScanQRCode from "./pages/ScanQRCode";
+import CheckToken from "./pages/CheckToken";
+import ConfirmDetails from "./pages/ConfirmDetails";
+import QueueStatus from "./pages/QueueStatus";
 import FinalCall from "./pages/FinalCall";
 import CustomerArrived from "./pages/CustomerArrived";
 
@@ -67,8 +68,9 @@ export default function App() {
         {/* ===== CUSTOMER ROUTES ===== */}
         <Route path="/" element={<HomeScreen />} />
         <Route path="/scan-qr" element={<ScanQRCode />} />
+        <Route path="/check-token" element={<CheckToken />} />
         <Route path="/details/:id" element={<ConfirmDetails />} />
-        <Route path="/token-confirmed" element={<TokenConfirmed />} />
+        <Route path="/queue-status" element={<QueueStatus />} />
         <Route path="/final-call" element={<FinalCall />} />
         <Route path="/arrived" element={<CustomerArrived />} />
 

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Ticket,
   User,
@@ -7,59 +7,214 @@ import {
   Activity,
   Bell,
   Home,
-  Megaphone,
   X,
   AlertTriangle
 } from 'lucide-react'
 import backgroundImage from '../assets/background.png'
-import AdvertisementCarousel from '../components/custermers/AdvertisementCarousel'
+import AdvertisementCarousel from '../components/AdvertisementCarousel'
+import { cancelTokenApi, getTokenByIdApi } from '../api/token.api'
+import { socket } from '../utils/socket'
 
 export default function QueueStatus() {
   const navigate = useNavigate()
-
-  // Dummy active token and shop data
-  const [activeToken, setActiveToken] = useState({
-    id: 'token-123',
-    shop_id: 'shop-456',
-    queue_type: 'A',
-    token_no: '12',
-    shops: {
-      name: 'Tasty Bites Diner'
-    }
-  })
-
-  // Dummy live queue data
-  const [queueData, setQueueData] = useState({
-    token: {
-      queue_type: 'A',
-      token_no: '12',
-      group_size: 3,
-      status: 'waiting'
-    },
-    groupsAhead: 2
-  })
-
-  // Dummy broadcast message
-  const [broadcast, setBroadcast] = useState(
-    'We are experiencing higher volume than usual. Thank you for your patience!'
-  )
+  const location = useLocation()
+  const { state } = location
+  const tokenId = state?.tokenId || localStorage.getItem('currentTokenId')
+  const [activeToken, setActiveToken] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [canceling, setCanceling] = useState(false)
+  const [error, setError] = useState('')
 
-  // Handlers using local state simulation
-  const handleCancelToken = () => {
-    setCanceling(true)
-    setTimeout(() => {
-      setCanceling(false)
-      setActiveToken(null)
+    const shop = location.state?.shop || null
+
+
+  useEffect(() => {
+    if (!tokenId) {
       navigate('/', { replace: true })
-    }, 1000)
-  }
+      return
+    }
+
+    let isActive = true
+
+    const fetchToken = async () => {
+      try {
+        setLoading(true)
+        setError('')
+
+        const response = await getTokenByIdApi(tokenId)
+        const token =
+          response?.token ??
+          response?.data?.token ??
+          response?.data?.data?.token ??
+          response?.data ??
+          response
+
+        if (!token?.id) {
+          throw new Error('Token not found.')
+        }
+
+        if (isActive) setActiveToken(token)
+      } catch (error) {
+        console.error('Get token failed:', error)
+        if (isActive) {
+          setError(
+            error?.response?.data?.message ||
+            error?.message ||
+            'Could not load your token.'
+          )
+        }
+      } finally {
+        if (isActive) setLoading(false)
+      }
+    }
+
+    fetchToken()
+
+    return () => {
+      isActive = false
+    }
+  }, [tokenId, navigate])
+
+  const handleCancelToken = async () => {
+    if (!tokenId) {
+      setError("Token ID is missing.");
+      return;
+    }
+
+    try {
+      setCanceling(true);
+      setError("");
+
+      await cancelTokenApi(
+        tokenId,
+        state?.mobile || activeToken?.mobile || localStorage.getItem('currentMobile')
+      );
+
+      navigate("/", {
+        replace: true,
+      });
+    } catch (error) {
+      console.error("Cancel token failed:", error);
+
+      setError(
+        error?.response?.data?.message ||
+        error?.message ||
+        "Could not cancel token."
+      );
+    } finally {
+      setCanceling(false);
+      setShowCancelConfirm(false);
+    }
+  };
+
+
+  // useEffect(() => {
+  //   if (!tokenId) return
+
+  //   const handleTokenCalled = (data) => {
+  //     const payload = data?.data ?? data
+  //     const calledToken = payload?.token ?? payload
+  //     const calledTokenId =
+  //       calledToken?.id ??
+  //       calledToken?.tokenId ??
+  //       calledToken?.token_id ??
+  //       data?.tokenId ??
+  //       data?.token_id
+
+  //     if (calledTokenId == null || String(calledTokenId) !== String(tokenId)) {
+  //       return
+  //     }
+
+  //     navigate('/final-call', {
+  //       state: {
+  //         token: calledToken?.id ? calledToken : activeToken,
+  //         tokenId,
+  //         mobile: state?.mobile || activeToken?.mobile || localStorage.getItem('currentMobile'),
+  //         shop: state?.shop || activeToken?.shops || activeToken?.shop,
+  //       },
+  //     })
+  //   }
+
+  //   socket.on('token:called', handleTokenCalled)
+
+  //   return () => {
+  //     socket.off('token:called', handleTokenCalled)
+  //   }
+  // }, [tokenId, activeToken, state, navigate])
 
   // Queue status logic
+ // Queue status logic
+  
+ useEffect(() => {
+    if (!tokenId) return
+
+    const shopId = activeToken?.shopId || state?.shop?.shopId || state?.shop?.id;
+    if (shopId && socket) {
+      socket.emit('join-shop', shopId);
+    }
+
+    const handleTokenCalled = (data) => {
+      const payload = data?.data ?? data
+      const calledToken = payload?.token ?? payload
+      const calledTokenId =
+        calledToken?.id ??
+        calledToken?.tokenId ??
+        calledToken?.token_id ??
+        data?.tokenId ??
+        data?.token_id
+
+      if (calledTokenId == null || String(calledTokenId) !== String(tokenId)) {
+        return
+      }
+
+      navigate('/final-call', {
+        state: {
+          token: calledToken?.id ? calledToken : activeToken,
+          tokenId,
+          mobile: state?.mobile || activeToken?.mobile || localStorage.getItem('currentMobile'),
+          shop: state?.shop || activeToken?.shops || activeToken?.shop,
+        },
+      })
+    }
+
+    socket.on('token:called', handleTokenCalled)
+
+    return () => {
+      socket.off('token:called', handleTokenCalled)
+    }
+  }, [tokenId, activeToken, state, navigate])
+ 
+ const groupsAhead = activeToken?.groupsAhead ?? activeToken?.groups_ahead ?? null
+  const tokenStatus = activeToken?.status
+
   const getQueueStatus = () => {
-    if (queueData.groupsAhead === 0) {
+    if (tokenStatus === 'cancelled') {
+      return {
+        title: "Token Cancelled",
+        colorClass: 'text-red-600',
+        bgClass: 'bg-red-50 text-red-600'
+      }
+    }
+
+    if (tokenStatus === 'not_arrived') {
+      return {
+        title: "Call Expired / Not Arrived",
+        colorClass: 'text-amber-600',
+        bgClass: 'bg-amber-50 text-amber-600'
+      }
+    }
+
+    if (tokenStatus === 'arrived') {
+      return {
+        title: "Arrived at Counter",
+        colorClass: 'text-emerald-600',
+        bgClass: 'bg-emerald-50 text-emerald-600'
+      }
+    }
+
+    if (groupsAhead === 0) {
       return {
         title: "You're Next!",
         colorClass: 'text-emerald-600',
@@ -67,7 +222,7 @@ export default function QueueStatus() {
       }
     }
 
-    if (queueData.groupsAhead <= 3) {
+    if (groupsAhead != null && groupsAhead <= 3) {
       return {
         title: 'Almost Ready',
         colorClass: 'text-amber-600',
@@ -83,7 +238,34 @@ export default function QueueStatus() {
   }
 
   const queueStatus = getQueueStatus()
-  const peopleCount = queueData.token.group_size ?? 1
+  const peopleCount = activeToken?.group_size ?? activeToken?.groupSize ?? 1
+  const queueType = activeToken?.queue_type ?? activeToken?.queueType
+  const tokenNumber = activeToken?.token_no ?? activeToken?.tokenNo
+
+  if (loading || !activeToken) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-[#f8f4ea] p-5">
+        <div className="text-center">
+          {loading ? (
+            <p className="font-semibold text-[#8A7F71]">Loading your queue status...</p>
+          ) : (
+            <>
+              <p role="alert" className="font-semibold text-red-700">
+                {error || 'Could not load your token.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/', { replace: true })}
+                className="mt-4 font-bold text-[#F2793A]"
+              >
+                Back to home
+              </button>
+            </>
+          )}
+        </div>
+      </main>
+    )
+  }
 
   return (
     <div
@@ -146,14 +328,14 @@ export default function QueueStatus() {
               <div className="flex items-center gap-2 shrink-0">
                 <Ticket className="w-5 h-5 text-[#F2793A]" />
                 <span className="text-lg sm:text-xl font-black tracking-tight text-[#F2793A]">
-                  {queueData.token.queue_type}-{queueData.token.token_no}
+                  {queueType && tokenNumber ? `${queueType}-${tokenNumber}` : 'Token'}
                 </span>
               </div>
 
               <div className="w-px h-6 bg-[#F1E6D8] shrink-0" />
 
               <span className="flex-1 min-w-0 text-right text-sm sm:text-base font-bold text-[#2B2118] truncate">
-                {activeToken?.shops?.name || 'Shop Name'}
+                {shop?.shopName || 'Shop Name'}
               </span>
             </div>
 
@@ -178,35 +360,21 @@ export default function QueueStatus() {
                 <Users className="w-5 h-5 text-[#8A7F71]" />
                 <div className="text-xs text-[#8A7F71] font-medium">Groups Ahead</div>
                 <div className="text-[#F2793A] font-bold text-sm sm:text-base">
-                  {queueData.groupsAhead === 0
+                  {groupsAhead === 0
                     ? "You're next!"
-                    : `${queueData.groupsAhead} ahead`}
+                    : groupsAhead == null
+                      ? 'Updating'
+                      : `${groupsAhead} ahead`}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* SHOP BROADCAST */}
-          {broadcast && (
-            <div className="bg-orange-50/80 border border-orange-200/80 rounded-2xl p-3.5 mb-3.5 flex gap-3 items-start shadow-xs">
-              <Megaphone className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-orange-800 mb-0.5">
-                  Message from Shop
-                </div>
-                <div className="text-xs sm:text-sm text-orange-950 leading-relaxed">
-                  {broadcast}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* LIVE STATUS CARD */}
           <div className="qs-d2 bg-white border border-[#F1E6D8] rounded-3xl p-4 sm:p-5 mb-3.5 shadow-[0_10px_24px_rgba(43,33,24,0.06)] relative overflow-hidden">
             <div
-              className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                queueData.groupsAhead === 0 ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}
+              className={`absolute left-0 top-0 bottom-0 w-1.5 ${groupsAhead === 0 ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
             />
 
             <div className="flex items-center gap-3.5 sm:gap-4">
@@ -224,9 +392,11 @@ export default function QueueStatus() {
                   {queueStatus.title}
                 </div>
                 <div className="mt-1 text-xs sm:text-sm text-gray-500 leading-normal">
-                  {queueData.groupsAhead === 0
+                  {groupsAhead === 0
                     ? 'Please proceed towards the counter. Your table will be ready shortly.'
-                    : `${queueData.groupsAhead} group${queueData.groupsAhead > 1 ? 's' : ''} ahead of you.`}
+                    : groupsAhead == null
+                      ? 'Your queue position is being updated.'
+                      : `${groupsAhead} group${groupsAhead > 1 ? 's' : ''} ahead of you.`}
                 </div>
               </div>
             </div>
@@ -250,15 +420,17 @@ export default function QueueStatus() {
 
           {/* ADVERTISEMENT */}
           <AdvertisementCarousel
-            shopId={activeToken?.shop_id}
-            tokenId={activeToken?.id}
-            placement="queue_status"
-            height={136}
-            borderRadius={22}
+            shopId={null}
+            placement="shop_list"
           />
 
           {/* ACTIONS */}
           <div className="mt-4 pb-2">
+            {error && (
+              <p role="alert" className="mb-3 text-sm font-medium text-red-700">
+                {error}
+              </p>
+            )}
             {!showCancelConfirm ? (
               <div className="flex flex-col sm:flex-row gap-2.5">
                 <button

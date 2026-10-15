@@ -40,6 +40,9 @@ export default function HomeScreen() {
     // ==========================================
     // 1. FETCH ALL SHOPS (GET)
     // ==========================================
+// ==========================================
+    // 1. FETCH ALL SHOPS (GET)
+    // ==========================================
     const fetchShops = async () => {
         setLoading(true)
         setError('')
@@ -49,22 +52,26 @@ export default function HomeScreen() {
             const shopList = Array.isArray(shopData) ? shopData : [shopData]
 
             setShops(
-                shopList.filter(Boolean).map((shop) => ({
-                    ...shop,
-                    name: shop.shopName,
-                    rating: Number(shop.initialRating) || 0,
-                    total_reviews: shop.totalReviews || 0,
-                    direction_url: shop.directionUrl,
-                    shop_images: shop.images || [],
-                    // Only active menus
-                    menu_items: Array.isArray(shop.menus)
-                        ? shop.menus.filter(
-                            (menu) => menu.status === 'active'
-                        )
-                        : [],
+                shopList
+                    .filter(Boolean)
+                    .filter((shop) => shop.status !== 'inactive') // Inactive shops ko screen se hata diya
+                    .map((shop) => ({
+                        ...shop,
+                        name: shop.shopName,
+                        rating: Number(shop.initialRating) || 0,
+                        total_reviews: shop.totalReviews || 0,
+                        direction_url: shop.directionUrl,
+                        shop_images: shop.images || [],
+                        // Only active menus
+                        menu_items: Array.isArray(shop.menus)
+                            ? shop.menus.filter(
+                                (menu) => menu.status === 'active'
+                            )
+                            : [],
 
-                    status: shop.status === 'active' ? 'open' : shop.status,
-                }))
+                        // shopStatus ko 'open' ya 'closed' set kiya
+                        shopStatus: shop.shopStatus === 'open' ? 'open' : 'closed',
+                    }))
             )
         } catch (err) {
             console.error('Error fetching shops:', err);
@@ -477,7 +484,7 @@ export default function HomeScreen() {
 }
 
 function ShopCard({ shop, onImages, onMenu }) {
-    const isOpen = shop.status === 'open'
+    const isOpen = shop.shopStatus === 'open'
 
     return (
         <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">

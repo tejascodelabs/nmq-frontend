@@ -184,7 +184,7 @@ const handleContinue = async () => {
     console.log("Created Token:", createdToken);
 
     // Navigate with token ID
-    navigate("/token-confirmed", {
+    navigate("/queue-status", {
       state: {
         tokenId: createdToken.id,
         mobile: trimmedMobile,
@@ -247,7 +247,7 @@ const handleContinue = async () => {
             <div className="flex items-center gap-3.5 flex-1 min-w-0">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-[#fcf7ec] bg-white shrink-0">
                 <img
-                  src={shop?.shop_images?.[0] || shop?.profile_image}
+                  src={shop?.profileImage}
                   alt={shop?.name}
                   className="w-full h-full object-cover"
                 />

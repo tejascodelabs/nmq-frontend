@@ -13,7 +13,7 @@ import backgroundImage from '../assets/background.png'
 import AdvertisementCarousel from '../components/AdvertisementCarousel'
 import api from '../api/axios'
 
-const FINAL_CALL_DURATION = 60
+const FINAL_CALL_DURATION = 120 // 2 Minutes timer as requested
 
 export default function FinalCall() {
   const navigate = useNavigate()
@@ -41,7 +41,7 @@ export default function FinalCall() {
     return () => clearTimeout(t)
   }, [])
 
-  // Audio Bell Effect simulation
+  // Audio Bell Effect simulation & Vibration
   const stopBell = () => {
     if (bellIntervalRef.current) {
       clearInterval(bellIntervalRef.current)
@@ -69,7 +69,7 @@ export default function FinalCall() {
     }
   }, [])
 
-  // Countdown Timer Logic
+  // Countdown Timer Logic (2 Minutes)
   useEffect(() => {
     if (timerExpired) return
 
@@ -88,49 +88,48 @@ export default function FinalCall() {
     return () => clearInterval(countdown)
   }, [timerExpired])
 
- const handleImHere = async () => {
-  if (loading) return;
+  const handleImHere = async () => {
+    if (loading) return
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true)
 
-    const activeTokenId = liveToken?.id || tokenId
-    if (!activeTokenId) {
-      setError('Token ID not found.')
-      return;
-    }
-
-    const response = await api.post(
-      `/tokens/${activeTokenId}/im-here`,
-      {
-        mobile: liveToken?.mobile || mobile,
+      const activeTokenId = liveToken?.id || tokenId
+      if (!activeTokenId) {
+        setError('Token ID not found.')
+        return
       }
-    );
 
-    const result = response.data
-    if (result?.success === false) {
-      throw new Error(result.message || 'Could not confirm your arrival.')
+      const response = await api.patch(
+        `/tokens/${activeTokenId}/im-here`,
+        {
+          mobile: liveToken?.mobile || mobile,
+        }
+      )
+
+      const result = response.data
+      if (result?.success === false) {
+        throw new Error(result.message || 'Could not confirm your arrival.')
+      }
+
+      stopBell()
+      navigate('/arrived', {
+        replace: true,
+        state: {
+          token: result?.token || result?.data?.token || result?.data || liveToken,
+        },
+      })
+    } catch (error) {
+      console.error("I'm Here failed:", error)
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          "Could not confirm your arrival."
+      )
+    } finally {
+      setLoading(false)
     }
-
-    stopBell()
-    navigate('/arrived', {
-      replace: true,
-      state: {
-        token: result?.token || result?.data?.token || result?.data || liveToken,
-      },
-    })
-  } catch (error) {
-    console.error("I'm Here failed:", error);
-
-    setError(
-      error.response?.data?.message ||
-        error.message ||
-        "Could not confirm your arrival."
-    );
-  } finally {
-    setLoading(false);
   }
-};
 
   if (!liveToken) return null
 
@@ -204,150 +203,62 @@ export default function FinalCall() {
           </div>
         </div>
 
-        {/* DETAILS CARD */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-[#F1DEC5] shadow-[0_8px_20px_rgba(0,0,0,0.06)]">
-          <div className="text-base sm:text-lg font-bold text-[#2B2118] mb-3 sm:mb-4">
-            Your Details
-          </div>
-
-          <div className="flex flex-col gap-3 sm:gap-4">
-            {/* Name Detail */}
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#FFF5EB] to-[#FFE7C8] border border-[#F3DEC2] text-[#F2793A] flex items-center justify-center shrink-0 shadow-xs">
-                <User className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <span className="w-20 sm:w-28 font-medium text-gray-500 text-sm sm:text-base">
-                Name
-              </span>
-              <strong className="flex-1 text-[#2B2118] font-semibold text-sm sm:text-base truncate">
-                {liveToken?.name || '-'}
-              </strong>
-            </div>
-
-            <div className="h-px bg-[#F5E8D8] my-0.5" />
-
-            {/* Guests Detail */}
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#FFF5EB] to-[#FFE7C8] border border-[#F3DEC2] text-[#F2793A] flex items-center justify-center shrink-0 shadow-xs">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <span className="w-20 sm:w-28 font-medium text-gray-500 text-sm sm:text-base">
-                Guests
-              </span>
-              <strong className="flex-1 text-[#2B2118] font-semibold text-sm sm:text-base truncate">
-                {liveToken?.group_size || 0} People
-              </strong>
-            </div>
-          </div>
-        </div>
-
         {/* TIMER & ARRIVAL CONFIRMATION CARD */}
         <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-8 border border-[rgba(242,121,58,0.15)] shadow-[0_12px_28px_rgba(43,33,24,0.08)]">
-          
           <div className="flex items-center justify-center gap-2 mb-3">
             <TimerReset className="w-5 h-5 text-[#F2793A]" />
             <span className="text-sm sm:text-base font-semibold text-gray-700">
-              Final Call Timer
+              Final Call Timer (2 Mins)
             </span>
           </div>
 
           <div className="text-center">
             <div
               className={`text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-none ${
-                seconds <= 10 ? 'fc-timer-low' : ''
-              } ${
-                seconds <= 15
-                  ? 'text-red-600'
-                  : seconds <= 30
-                  ? 'text-orange-600'
-                  : 'text-emerald-600'
-              } transition-colors duration-300`}
+                seconds <= 15 ? 'fc-timer-low text-red-600' : 'text-emerald-600'
+              }`}
             >
-              {seconds}
+              {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
             </div>
 
             <div className="text-xs sm:text-sm text-[#8A7F71] font-medium mt-1">
-              Seconds Remaining
-            </div>
-
-            <div
-              className={`mt-2 text-xs sm:text-sm font-semibold ${
-                seconds <= 15
-                  ? 'text-red-600'
-                  : seconds <= 30
-                  ? 'text-orange-600'
-                  : 'text-emerald-600'
-              }`}
-            >
-              {seconds <= 0
-                ? 'Response time has ended'
-                : seconds <= 15
-                ? 'Click "I am Here" below to confirm your arrival'
-                : seconds <= 30
-                ? 'Almost there'
-                : 'Click "I am Here" below to confirm your arrival'}
+              Time Remaining
             </div>
           </div>
 
-          {/* EXPIRED ALERT */}
           {timerExpired && (
-            <div className="w-full max-w-lg mx-auto mt-4 p-3.5 sm:p-4 bg-amber-50 border border-amber-400 rounded-xl text-center">
+            <div className="w-full max-w-lg mx-auto mt-4 p-3.5 bg-amber-50 border border-amber-400 rounded-xl text-center">
               <div className="text-xs sm:text-sm font-bold text-gray-600 flex items-center justify-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Please reach the counter now!</span>
+                <span>Response time ended. Please reach the counter!</span>
               </div>
             </div>
           )}
 
-          {/* ACTION BUTTON / STATUS */}
-          <>
-            <button
-                type="button"
-                onClick={handleImHere}
-                disabled={loading}
-                className={`w-full h-14 sm:h-16 mt-6 relative overflow-hidden border-none rounded-2xl text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2.5 transition-transform duration-200 active:scale-[0.98] ${
-                  loading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
-                } ${
-                  seconds <= 15
-                    ? 'shadow-[0_10px_24px_rgba(220,38,38,0.30)]'
-                    : 'shadow-[0_10px_24px_rgba(34,197,94,0.28)]'
-                }`}
-              >
-                {/* Progress Fill Bar */}
-                <div
-                  className={`absolute inset-0 transition-all duration-1000 linear ${
-                    seconds <= 15
-                      ? 'bg-gradient-to-r from-red-600 to-red-500'
-                      : 'bg-gradient-to-r from-emerald-600 to-emerald-500'
-                  }`}
-                  style={{
-                    width: `${Math.max(
-                      (seconds / FINAL_CALL_DURATION) * 100,
-                      8
-                    )}%`
-                  }}
-                />
-
-                <div className="relative z-10 w-full h-full flex items-center justify-center gap-2.5 text-white font-bold">
-                  {loading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/35 border-t-white rounded-full animate-spin" />
-                      <span>Confirming Arrival...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span>I'm Here</span>
-                    </>
-                  )}
-                </div>
-              </button>
-            {error && (
-              <p role="alert" className="mt-3 text-center text-sm font-medium text-red-700">
-                {error}
-              </p>
+          <button
+            type="button"
+            onClick={handleImHere}
+            disabled={loading}
+            className="w-full h-14 sm:h-16 mt-6 bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-2xl text-white font-bold text-base sm:text-lg flex items-center justify-center gap-2.5 cursor-pointer shadow-lg active:scale-[0.98] transition-all"
+          >
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/35 border-t-white rounded-full animate-spin" />
+                <span>Confirming Arrival...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                <span>I'm Here</span>
+              </>
             )}
-          </>
+          </button>
+
+          {error && (
+            <p role="alert" className="mt-3 text-center text-sm font-medium text-red-700">
+              {error}
+            </p>
+          )}
         </div>
 
         {/* ADVERTISEMENT */}

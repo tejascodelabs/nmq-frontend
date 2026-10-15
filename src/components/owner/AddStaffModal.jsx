@@ -190,7 +190,7 @@ export default function AddStaffModal({ isOpen, shopId, staff, onClose }) {
               onChange={(e) => set('role', e.target.value)}
               className="w-full px-4 py-2.5 border rounded-xl text-sm border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#bf4c2a]/20 focus:border-[#bf4c2a] bg-white text-[#2f211b]"
             >
-              <option value="serving">Serving Staff</option>
+              {/* <option value="serving">Serving Staff</option> */}
               <option value="counter">Counter Person</option>
             </select>
           </div>
