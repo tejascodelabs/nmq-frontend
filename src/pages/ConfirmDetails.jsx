@@ -11,7 +11,8 @@ import {
   Info,
   CheckCircle2,
   RotateCw,
-  Store
+  Store,
+  PauseCircle, PlayCircle
 } from 'lucide-react'
 import backgroundImage from '../assets/background.png'
 import { createTokenApi } from "../api/token.api";
@@ -23,8 +24,6 @@ export default function ConfirmDetails() {
   const navigate = useNavigate()
   const { id } = useParams();
 
-  // Receive initial shop details passed via route state
-  // const [shop] = useState(location.state?.shop || null)
   const [shop, setShop] = useState(null);
   const [shopLoading, setShopLoading] = useState(true);
 
@@ -34,7 +33,7 @@ export default function ConfirmDetails() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const isQueuePaused = (shop?.status || '').toLowerCase() === 'paused'
+  const isQueuePaused = (shop?.queueStatus || '').toLowerCase() === 'paused' || (shop?.queueStatus || '').toLowerCase() === 'pause'
 
   useEffect(() => {
     const fetchShop = async () => {
@@ -49,9 +48,6 @@ export default function ConfirmDetails() {
         setError("");
 
         const response = await getShopByIdApi(id);
-
-        console.log("Shop API Response:", response);
-
         const shopData = response?.shop || response?.data || response;
 
         if (!shopData?.id) {
@@ -61,13 +57,11 @@ export default function ConfirmDetails() {
         setShop(shopData);
       } catch (error) {
         console.error("Fetch shop failed:", error);
-
         setError(
           error?.response?.data?.message ||
           error?.message ||
           "Unable to fetch shop details."
         );
-
         setShop(null);
       } finally {
         setShopLoading(false);
@@ -79,11 +73,10 @@ export default function ConfirmDetails() {
 
   if (shopLoading) {
     return (
-      <SimpleLoader fullScreen text="Fetching Shop..." />
+      <SimpleLoader fullScreen text="Loading..." />
     );
   }
 
-  // If no shop data is present
   if (!shop) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8f4ea] p-6 font-sans">
@@ -125,87 +118,75 @@ export default function ConfirmDetails() {
       people <= 4 ? 'Q4' :
         people <= 6 ? 'Q6' : 'Q8'
 
-const handleContinue = async () => {
-  if (loading) return;
+  const handleContinue = async () => {
+    if (loading) return;
 
-  if (isQueuePaused) {
-    setError("Queue is temporarily paused. Please try again later.");
-    return;
-  }
-
-  setError("");
-
-  // Mobile validation
-  const trimmedMobile = mobile.trim();
-
-  if (!trimmedMobile || !/^[6-9]\d{9}$/.test(trimmedMobile)) {
-    setError("Enter a valid 10-digit mobile number");
-    return;
-  }
-
-  // Name validation
-  const trimmedName = name.trim();
-
-  if (!trimmedName) {
-    setError("Please enter your name");
-    return;
-  }
-
-  // Shop validation
-  if (!shop?.id) {
-    setError("Shop information is missing.");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const payload = {
-      shopId: Number(shop.id),
-      mobile: trimmedMobile,
-      name: trimmedName,
-      groupSize: Number(people),
-      queueType: queueType.toUpperCase(),
-    };
-
-    console.log("Create Token Payload:", payload);
-
-    const response = await createTokenApi(payload);
-
-    console.log("Create Token Response:", response);
-
-    const createdToken = response?.token;
-
-    // Validate created token
-    if (!createdToken?.id) {
-      throw new Error("Token was not created.");
+    if (isQueuePaused) {
+      setError("Temporary misal entry is close");
+      return;
     }
 
-    console.log("Created Token:", createdToken);
+    setError("");
 
-    // Navigate with token ID
-    navigate("/queue-status", {
-      state: {
-        tokenId: createdToken.id,
+    const trimmedMobile = mobile.trim();
+    if (!trimmedMobile || !/^[6-9]\d{9}$/.test(trimmedMobile)) {
+      setError("Enter a valid 10-digit mobile number");
+      return;
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Please enter your name");
+      return;
+    }
+    const nameRegex = /^[A-Za-z\s]+$/;
+    if (!nameRegex.test(trimmedName)) {
+      setError("Name should only contain letters (no numbers or symbols)");
+      return;
+    }
+
+    if (!shop?.id) {
+      setError("Shop information is missing.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const payload = {
+        shopId: Number(shop.id),
         mobile: trimmedMobile,
-        shop,
-        token: createdToken,
-      },
-    });
-  } catch (error) {
-    console.error("Create token failed:", error);
+        name: trimmedName,
+        groupSize: Number(people),
+        queueType: queueType.toUpperCase(),
+      };
 
-    const message =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Could not create token. Please try again.";
+      const response = await createTokenApi(payload);
+      const createdToken = response?.token;
 
-    setError(message);
-  } finally {
-    setLoading(false);
-  }
-};
+      if (!createdToken?.id) {
+        throw new Error("Token was not created.");
+      }
 
+      navigate("/token-conform", {
+        state: {
+          tokenId: createdToken.id,
+          mobile: trimmedMobile,
+          shop,
+          token: createdToken,
+        },
+      });
+    } catch (error) {
+      console.error("Create token failed:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Could not create token. Please try again.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -215,7 +196,6 @@ const handleContinue = async () => {
         backgroundSize: '100% auto'
       }}
     >
-      {/* Top Header Bar */}
       <div className="max-w-4xl mx-auto flex items-center justify-between p-4 sm:p-6">
         <button
           onClick={() => navigate(-1)}
@@ -226,10 +206,7 @@ const handleContinue = async () => {
         </button>
       </div>
 
-      {/* Main Container */}
       <div className="max-w-md sm:max-w-lg md:max-w-xl mx-auto px-4 sm:px-6">
-
-        {/* Page Title */}
         <div className="text-center mb-6">
           <h1 className="m-0 text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#3b1d00] leading-tight">
             Confirm Details
@@ -239,7 +216,6 @@ const handleContinue = async () => {
           </p>
         </div>
 
-        {/* Content Card */}
         <div className="bg-white/60 backdrop-blur-md rounded-3xl p-4 sm:p-6 shadow-xl border border-white/70">
 
           {/* Shop Highlight Card */}
@@ -258,104 +234,125 @@ const handleContinue = async () => {
                   {shop.shopName}
                 </div>
 
-                <div
-                  className={`mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${isQueuePaused
-                    ? 'bg-red-100 text-red-600'
-                    : 'bg-emerald-100 text-emerald-700'
-                    }`}
-                >
-                  {isQueuePaused ? '⏸ Paused' : '● Live Accepting'}
+                <div className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isQueuePaused ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                  {isQueuePaused ? (
+                    <>
+                      <PauseCircle className="w-3.5 h-3.5" /> Paused
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="w-3.5 h-3.5" /> Live Accepting
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Form Inputs */}
-          <div className="space-y-4">
-            {/* Mobile Input */}
-            <div>
-              <label className="block mb-2 font-bold text-[#4a2500] text-xs sm:text-sm">
-                Mobile Number
-              </label>
-              <div className="flex items-center bg-white rounded-2xl px-4 h-12 border border-[#e1d5c1] focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-all">
-                <Phone className="w-5 h-5 text-gray-400 mr-2.5 shrink-0" />
-                <input
-                  type="tel"
-                  value={mobile}
-                  placeholder="Enter 10 digit number"
-                  onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  className="w-full border-none outline-none text-sm sm:text-base font-semibold text-[#2c1000] bg-transparent placeholder-gray-400"
-                />
-              </div>
+          {/* Conditional Rendering: Agar Queue Paused hai toh Inputs ki jagah Message dikhayein */}
+          {isQueuePaused ? (
+            <div className="my-8 py-8 px-4 bg-red-50 border-2 border-dashed border-red-300 rounded-2xl text-center">
+              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+              <h3 className="text-lg font-extrabold text-red-700 mb-1">
+                Temporary misal entry is close
+              </h3>
+              <p className="text-xs sm:text-sm text-red-600 font-medium">
+                The queue is currently paused by the shop. Please check back later.
+              </p>
             </div>
+          ) : (
+            <>
+              {/* Form Inputs */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-2 font-bold text-[#4a2500] text-xs sm:text-sm">
+                    Mobile Number
+                  </label>
+                  <div className="flex items-center bg-white rounded-2xl px-4 h-12 border border-[#e1d5c1] focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-all">
+                    <Phone className="w-5 h-5 text-gray-400 mr-2.5 shrink-0" />
+                    <input
+                      type="tel"
+                      value={mobile}
+                      placeholder="Enter 10 digit number"
+                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      className="w-full border-none outline-none text-sm sm:text-base font-semibold text-[#2c1000] bg-transparent placeholder-gray-400"
+                    />
+                  </div>
+                </div>
 
-            {/* Name Input */}
-            <div>
-              <label className="block mb-2 font-bold text-[#4a2500] text-xs sm:text-sm">
-                Your Name
-              </label>
-              <div className="flex items-center bg-white rounded-2xl px-4 h-12 border border-[#e1d5c1] focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-all">
-                <User className="w-5 h-5 text-gray-400 mr-2.5 shrink-0" />
-                <input
-                  type="text"
-                  value={name}
-                  placeholder="Enter your name"
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border-none outline-none text-sm sm:text-base font-semibold text-[#2c1000] bg-transparent placeholder-gray-400"
-                />
+                <div>
+                  <label className="block mb-2 font-bold text-[#4a2500] text-xs sm:text-sm">
+                    Your Name
+                  </label>
+                  <div className="flex items-center bg-white rounded-2xl px-4 h-12 border border-[#e1d5c1] focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-all">
+                    <User className="w-5 h-5 text-gray-400 mr-2.5 shrink-0" />
+                    <input
+                      type="text"
+                      value={name}
+                      placeholder="Enter your name"
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                        const capitalized = cleaned.replace(/\b\w/g, (l) => l.toUpperCase());
+                        setName(capitalized);
+                      }} 
+                      className="w-full border-none outline-none text-sm sm:text-base font-semibold text-[#2c1000] bg-transparent placeholder-gray-400"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Guest Selector Counter */}
-          <div className="mt-6 text-center">
-            <label className="block font-extrabold text-[#3b1d00] mb-3 text-sm sm:text-base">
-              Number of Guests
-            </label>
+              {/* Guest Selector Counter */}
+              <div className="mt-6 text-center">
+                <label className="block font-extrabold text-[#3b1d00] mb-3 text-sm sm:text-base">
+                  Number of Guests
+                </label>
 
-            <div className="inline-block w-full max-w-xs">
-              <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-2xl border border-[#e1d5c1] shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => setPeople((p) => Math.max(1, p - 1))}
-                  className="w-10 h-10 rounded-xl bg-[#fcf7ec] text-orange-500 flex items-center justify-center font-bold cursor-pointer active:scale-90 transition-transform"
-                  aria-label="Decrease guest count"
-                >
-                  <Minus className="w-5 h-5" />
-                </button>
-                <span className="text-xl font-extrabold text-[#2c1000] min-w-10 text-center">
-                  {people}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPeople((p) => Math.min(20, p + 1))}
-                  className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold cursor-pointer active:scale-90 transition-transform"
-                  aria-label="Increase guest count"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
+                <div className="inline-block w-full max-w-xs">
+                  <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-2xl border border-[#e1d5c1] shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setPeople((p) => Math.max(1, p - 1))}
+                      className="w-10 h-10 rounded-xl bg-[#fcf7ec] text-orange-500 flex items-center justify-center font-bold cursor-pointer active:scale-90 transition-transform"
+                      aria-label="Decrease guest count"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </button>
+                    <span className="text-xl font-extrabold text-[#2c1000] min-w-10 text-center">
+                      {people}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPeople((p) => Math.min(20, p + 1))}
+                      className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold cursor-pointer active:scale-90 transition-transform"
+                      aria-label="Increase guest count"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 text-[#7c5c2e] text-xs sm:text-sm font-medium">
+                  You can add up to 20 people max
+                </div>
+
+                {people >= 7 && (
+                  <div className="mt-3 text-xs text-amber-800 bg-amber-50 rounded-xl p-2.5 font-semibold border border-amber-200">
+                    Groups of 7+ join the Q8 queue together
+                  </div>
+                )}
               </div>
-            </div>
 
-            <div className="mt-2.5 text-[#7c5c2e] text-xs sm:text-sm font-medium">
-              You can add up to 20 people max
-            </div>
-
-            {people >= 7 && (
-              <div className="mt-3 text-xs text-amber-800 bg-amber-50 rounded-xl p-2.5 font-semibold border border-amber-200">
-                Groups of 7+ join the Q8 queue together
-              </div>
-            )}
-          </div>
-
-          {/* Queue Type Info */}
-          {!error && (
-            <div className="mt-5 bg-emerald-50 rounded-2xl p-3 flex items-center gap-2.5 border border-emerald-200">
-              <Users className="w-5 h-5 text-emerald-600 shrink-0" />
-              <div className="text-xs sm:text-sm font-bold text-emerald-800">
-                You will join the <span className="underline">{queueType}</span> group queue
-              </div>
-            </div>
+              {/* Queue Type Info */}
+              {!error && (
+                <div className="mt-5 bg-emerald-50 rounded-2xl p-3 flex items-center gap-2.5 border border-emerald-200">
+                  <Users className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div className="text-xs sm:text-sm font-bold text-emerald-800">
+                    You will join the <span className="underline">{queueType}</span> group queue
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Error Message */}
@@ -363,13 +360,6 @@ const handleContinue = async () => {
             <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl p-3 text-red-600 font-bold text-xs sm:text-sm flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
-            </div>
-          )}
-
-          {isQueuePaused && (
-            <div className="mt-3 bg-red-50 border border-red-200 rounded-2xl p-3 flex items-center gap-2.5 text-red-600 font-bold text-xs sm:text-sm">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              <span>Queue is temporarily paused. Please try again later.</span>
             </div>
           )}
 
@@ -383,7 +373,7 @@ const handleContinue = async () => {
                 : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:opacity-95 active:scale-95'
                 }`}
             >
-              {loading ? 'Reserving Position...' : isQueuePaused ? 'QUEUE PAUSED' : 'JOIN THE QUEUE'}
+              {loading ? 'Reserving Position...' : isQueuePaused ? 'TEMPORARY MISAL ENTRY IS CLOSE' : 'JOIN THE QUEUE'}
             </button>
 
             {/* Rules Block */}

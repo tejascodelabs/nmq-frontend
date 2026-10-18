@@ -377,7 +377,7 @@ export default function StaffManagement({shopId}) {
                   <div className="bg-[#f8f5ef] p-2.5 rounded-lg text-xs space-y-1 mb-4 border border-[#eae2d8]">
                     <div className="flex justify-between">
                       <span className="text-[#8b7c72]">Staff ID:</span>
-                      <span className="font-semibold text-[#2f211b]">{staff.staff_id}</span>
+                      <span className="font-semibold text-[#2f211b]">{staff.staffId || "Not Found"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#8b7c72]">Mobile:</span>

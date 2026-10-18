@@ -421,7 +421,7 @@ export default function QueueStatus() {
           {/* ADVERTISEMENT */}
           <AdvertisementCarousel
             shopId={null}
-            placement="shop_list"
+            placement="queue_status"
           />
 
           {/* ACTIONS */}

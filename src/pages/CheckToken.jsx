@@ -45,7 +45,7 @@ export default function CheckToken() {
   const [infoMessage, setInfoMessage] = useState('')
   const [notFound, setNotFound] = useState(false)
   const [loading, setLoading] = useState(false)
-  
+
   const mobileRegex = /^[6-9]\d{9}$/
   const isValidMobile = mobileRegex.test(mobile)
 
@@ -105,7 +105,7 @@ export default function CheckToken() {
   return (
     <div className="min-h-screen w-full bg-white pb-8 box-border font-sans">
       <div className="max-w-[480px] mx-auto px-4 box-border">
-        
+
         {/* Back Button */}
         <button
           onClick={() => navigate('/shop-list')}
@@ -129,20 +129,18 @@ export default function CheckToken() {
           <AdvertisementCarousel
             shopId={null}
             placement="check_token"
-            height={136}
-            borderRadius={18}
           />
         </div>
 
         {/* Main Card Container */}
         <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 box-border relative animate-fade-in">
-          
+
           {/* Mobile Input Field */}
           <div className="mb-4">
             <label className="block mb-1.5 text-sm font-semibold text-gray-700">
               Mobile Number <span className="text-red-600">*</span>
             </label>
-            
+
             <div className="flex relative items-center">
               <div className="flex items-center h-11 px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-sm sm:text-base text-gray-700 select-none whitespace-nowrap">
                 🇮🇳 +91 <span className="text-gray-300 ml-1">|</span>
@@ -206,16 +204,15 @@ export default function CheckToken() {
               </button>
             </div>
           )}
-          
+
           {/* Submit Button */}
           <div className="mt-5">
             <button
               type="button"
               onClick={handleCheck}
               disabled={!isValidMobile || loading}
-              className={`w-full h-12 bg-orange-500 text-white rounded-xl font-bold text-sm sm:text-base cursor-pointer shadow-md transition-all flex items-center justify-center gap-2 ${
-                (!isValidMobile || loading) ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-600 active:scale-[0.98]'
-              }`}
+              className={`w-full h-12 bg-orange-500 text-white rounded-xl font-bold text-sm sm:text-base cursor-pointer shadow-md transition-all flex items-center justify-center gap-2 ${(!isValidMobile || loading) ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-600 active:scale-[0.98]'
+                }`}
             >
               {loading ? '⏳ Checking Token...' : 'CHECK STATUS →'}
             </button>
@@ -225,7 +222,7 @@ export default function CheckToken() {
           <div className="mt-6 bg-gray-50 border border-gray-100 p-3.5 rounded-xl text-gray-500 text-xs leading-relaxed text-center">
             🔒 Your phone data is strictly mapped to active counter tokens only.
           </div>
-          
+
         </div>
       </div>
     </div>

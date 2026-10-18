@@ -264,7 +264,7 @@ export default function FinalCall() {
         <div className="mt-1">
           <AdvertisementCarousel
             shopId={null}
-            placement="shop_list"
+            placement="final_call"
           />
         </div>
 

@@ -10,6 +10,7 @@ import {
   Home,
   Megaphone,
 } from 'lucide-react'
+import AdvertisementCarousel from '../components/AdvertisementCarousel'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL
 
@@ -223,6 +224,14 @@ export default function CustomerArrived() {
               </div>
             </div>
 
+            <div className="mt-1">
+              <AdvertisementCarousel
+                shopId={null}
+                placement="arrived"
+              />
+            </div>
+
+
             <div className="arr-d3 bg-white rounded-2xl p-5 border border-[#F3E5D0] shadow-sm mt-5">
               <h3 className="m-0 text-gray-900 text-lg font-bold">
                 Rate Your Experience
@@ -240,11 +249,10 @@ export default function CustomerArrived() {
                     className="p-0 border-none bg-transparent cursor-pointer transition-transform duration-200 hover:scale-110 active:scale-90"
                   >
                     <Star
-                      className={`w-9 h-9 ${
-                        rating >= star
+                      className={`w-9 h-9 ${rating >= star
                           ? 'fill-amber-400 text-amber-300'
                           : 'fill-transparent text-amber-300'
-                      }`}
+                        }`}
                     />
                   </button>
                 ))}
@@ -271,11 +279,10 @@ export default function CustomerArrived() {
                       type="button"
                       key={option}
                       onClick={() => toggleOption(option)}
-                      className={`px-3.5 py-2.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
-                        selected
+                      className={`px-3.5 py-2.5 rounded-full text-xs font-semibold border transition-all duration-200 ${selected
                           ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
                           : 'bg-gray-50 text-gray-600 border-gray-200 hover:-translate-y-0.5 shadow-none'
-                      }`}
+                        }`}
                     >
                       {option}
                     </button>
@@ -327,11 +334,10 @@ export default function CustomerArrived() {
               type="button"
               onClick={handleSubmitFeedback}
               disabled={submitting}
-              className={`w-full mt-5 h-14 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-600/25 transition-all ${
-                submitting
+              className={`w-full mt-5 h-14 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-600/25 transition-all ${submitting
                   ? 'opacity-75 cursor-not-allowed'
                   : 'hover:-translate-y-0.5 active:scale-95 cursor-pointer'
-              }`}
+                }`}
             >
               {submitting ? 'Submitting...' : 'Submit Feedback'}
             </button>

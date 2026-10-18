@@ -57,6 +57,7 @@ import Profile from "./pages/owner/Profile";
 import MenuManagement from "./pages/owner/MenuManagement";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import AnalyticsAndReports from "./pages/owner/AnalyticsAndReports";
+import TokenConfirmed from "./pages/TokenConfirmed";
 
 export default function App() {
 
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="/scan-qr" element={<ScanQRCode />} />
         <Route path="/check-token" element={<CheckToken />} />
         <Route path="/details/:id" element={<ConfirmDetails />} />
+        <Route path="/token-conform" element={<TokenConfirmed />} />
         <Route path="/queue-status" element={<QueueStatus />} />
         <Route path="/final-call" element={<FinalCall />} />
         <Route path="/arrived" element={<CustomerArrived />} />

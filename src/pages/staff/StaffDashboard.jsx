@@ -93,14 +93,17 @@ export default function StaffDashboard() {
   const [popup, setPopup] = useState({ open: false, title: "", message: "" });
   const [secondsAgo, setSecondsAgo] = useState(0);
 
-  const fetchDashboardData = useCallback(async () => {
+  // Silent background fetch flag add kiya hai taaki loader show na ho
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
     if (!user?.id) {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError("");
 
       const profileRes = await authenticatedFetch(`${API_BASE_URL}/staff/${user.id}/profile`);
@@ -144,18 +147,33 @@ export default function StaffDashboard() {
       }
     } catch (err) {
       console.error("Dashboard init error:", err);
-      setError(err.message || "Unable to load dashboard data.");
+      if (!isSilent) {
+        setError(err.message || "Unable to load dashboard data.");
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   }, [user?.id]);
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(false);
   }, [fetchDashboardData]);
 
   // =====================================================
-  // REAL-TIME SOCKET.IO ENGINE (Fixed Immutable State Sync)
+  // AUTO REFRESH POLLING (Har 15 sec me silent background sync)
+  // =====================================================
+  useEffect(() => {
+    const autoRefreshInterval = setInterval(() => {
+      fetchDashboardData(true); // true matlab bina loader ke fetch karega
+    }, 15000);
+
+    return () => clearInterval(autoRefreshInterval);
+  }, [fetchDashboardData]);
+
+  // =====================================================
+  // REAL-TIME SOCKET.IO ENGINE
   // =====================================================
   useEffect(() => {
     if (!shop?.id) return;
@@ -171,13 +189,24 @@ export default function StaffDashboard() {
       socket.emit("join-shop", shop.id);
     });
 
-    // Helper to extract and normalize token from any socket payload variant
     const extractToken = (data) => {
       const raw = data?.token ?? data?.data?.token ?? data?.data ?? data;
       return raw?.id ? normalizeToken(raw) : null;
     };
 
-    // 1. Token Called Event
+    socket.on("token:created", (data) => {
+      const normalized = extractToken(data);
+      if (!normalized) return;
+
+      if (normalized.status === "waiting") {
+        setWaitingTokens((prev) => {
+          if (prev.some((t) => t.id === normalized.id)) return prev;
+          return [...prev, normalized];
+        });
+      }
+      setSecondsAgo(0);
+    });
+
     socket.on("token:called", (data) => {
       const normalized = extractToken(data);
       if (!normalized) return;
@@ -190,7 +219,6 @@ export default function StaffDashboard() {
       setSecondsAgo(0);
     });
 
-    // 2. Token Im-Here Event (Instant Status Update)
     socket.on("token:im-here", (data) => {
       const normalized = extractToken(data);
       if (!normalized) return;
@@ -202,12 +230,10 @@ export default function StaffDashboard() {
       setSecondsAgo(0);
     });
 
-    // 3. Audio Bell Chime
     socket.on("token:bell", () => {
       playBellChime();
     });
 
-    // 4. Arrival Status Updated (Arrived / Not Arrived)
     socket.on("token:arrival-status", (data) => {
       const normalized = extractToken(data);
       if (!normalized) return;
@@ -217,26 +243,12 @@ export default function StaffDashboard() {
       setSecondsAgo(0);
     });
 
-    // 5. Timeout Event
     socket.on("token:timeout", (data) => {
       const normalized = extractToken(data);
       if (!normalized) return;
 
       setPendingArrivals((prev) => prev.filter((t) => t.id !== normalized.id));
       setSecondsAgo(0);
-    });
-
-    // 6. New Token Created
-    socket.on("token:created", (data) => {
-      const normalized = extractToken(data);
-      if (!normalized) return;
-
-      if (normalized.status === "waiting") {
-        setWaitingTokens((prev) => {
-          if (prev.some((t) => t.id === normalized.id)) return prev;
-          return [...prev, normalized];
-        });
-      }
     });
 
     return () => {
@@ -282,6 +294,45 @@ export default function StaffDashboard() {
     [selectedQueues]
   );
 
+  // const handleCallNext = useCallback(async (queueType) => {
+  //   const queueTokens = waitingTokens
+  //     .filter((t) => t.queue_type === queueType)
+  //     .sort((a, b) => Number(a.token_no) - Number(b.token_no));
+
+  //   if (queueTokens.length === 0) {
+  //     setPopup({
+  //       open: true,
+  //       title: "Queue Empty",
+  //       message: "There are no waiting customers in this queue.",
+  //     });
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await authenticatedFetch(
+  //       `${API_BASE_URL}/tokens/shop/${shop.id}/call-next`,
+  //       {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           queueType,
+  //           staffName: staff?.name || user?.name || null,
+  //         }),
+  //       }
+  //     );
+
+  //     const result = await response.json();
+  //     if (!response.ok || !result.success) {
+  //       throw new Error(result.message || "Failed to call next token.");
+  //     }
+  //   } catch (err) {
+  //     console.error("Call next token error:", err);
+  //     setPopup({ open: true, title: "Error", message: err.message || "Unable to call next token." });
+  //     fetchDashboardData(false);
+  //   }
+  // }, [waitingTokens, shop?.id, staff?.name, user?.name, fetchDashboardData]);
+
+
   const handleCallNext = useCallback(async (queueType) => {
     const queueTokens = waitingTokens
       .filter((t) => t.queue_type === queueType)
@@ -313,10 +364,13 @@ export default function StaffDashboard() {
       if (!response.ok || !result.success) {
         throw new Error(result.message || "Failed to call next token.");
       }
+
+      // CALL NEXT successful hone par bina loader ke silent refresh/sync
+      fetchDashboardData(true);
     } catch (err) {
       console.error("Call next token error:", err);
       setPopup({ open: true, title: "Error", message: err.message || "Unable to call next token." });
-      fetchDashboardData();
+      fetchDashboardData(true);
     }
   }, [waitingTokens, shop?.id, staff?.name, user?.name, fetchDashboardData]);
 
@@ -339,7 +393,7 @@ export default function StaffDashboard() {
       }
     } catch (err) {
       console.error(`Update token status error:`, err);
-      fetchDashboardData();
+      fetchDashboardData(false);
     }
   }, [fetchDashboardData]);
 
@@ -384,7 +438,7 @@ export default function StaffDashboard() {
           <h2 className="text-base font-bold text-slate-900">Unable to Load Dashboard</h2>
           <p className="text-sm text-slate-500 mt-2">{error || "Staff profile data not found."}</p>
           <button
-            onClick={fetchDashboardData}
+            onClick={() => fetchDashboardData(false)}
             className="mt-4 h-10 px-5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800"
           >
             TRY AGAIN
@@ -412,13 +466,13 @@ export default function StaffDashboard() {
 
         <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
           <div className="flex flex-col items-start md:items-end text-xs text-slate-400">
-            <span>
+            {/* <span>
               {secondsAgo === 0
                 ? "Updated just now"
                 : secondsAgo < 60
                   ? `Updated ${secondsAgo} sec ago`
                   : `Updated ${Math.floor(secondsAgo / 60)} min ago`}
-            </span>
+            </span> */}
             <span className="text-slate-600 font-semibold">{date} • {time}</span>
           </div>
 
@@ -527,7 +581,6 @@ export default function StaffDashboard() {
                       </div>
                     </div>
 
-                    {/* PENDING ARRIVALS / CALLED / IM-HERE SECTION */}
                     <div className="p-4">
                       <h3 className="text-xs font-extrabold text-slate-400 tracking-wider uppercase mb-3">
                         Currently Called / Pending Arrival

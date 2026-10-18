@@ -82,7 +82,7 @@ export default function AddStaffModal({ isOpen, shopId, staff, onClose }) {
       })
 
       setCreatedStaffInfo({
-        staff_id: response.data?.id,
+        staff_id: response.data?.staff_id || response.data?.staffId,
         password: form.password,
         name: response.data?.name || form.full_name,
       })
