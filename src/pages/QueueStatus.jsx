@@ -87,10 +87,8 @@ export default function QueueStatus() {
       setCanceling(true);
       setError("");
 
-      await cancelTokenApi(
-        tokenId,
-        state?.mobile || activeToken?.mobile || localStorage.getItem('currentMobile')
-      );
+      // Pass only the tokenId now
+      await cancelTokenApi(tokenId);
 
       navigate("/", {
         replace: true,
@@ -108,44 +106,6 @@ export default function QueueStatus() {
       setShowCancelConfirm(false);
     }
   };
-
-
-  // useEffect(() => {
-  //   if (!tokenId) return
-
-  //   const handleTokenCalled = (data) => {
-  //     const payload = data?.data ?? data
-  //     const calledToken = payload?.token ?? payload
-  //     const calledTokenId =
-  //       calledToken?.id ??
-  //       calledToken?.tokenId ??
-  //       calledToken?.token_id ??
-  //       data?.tokenId ??
-  //       data?.token_id
-
-  //     if (calledTokenId == null || String(calledTokenId) !== String(tokenId)) {
-  //       return
-  //     }
-
-  //     navigate('/final-call', {
-  //       state: {
-  //         token: calledToken?.id ? calledToken : activeToken,
-  //         tokenId,
-  //         mobile: state?.mobile || activeToken?.mobile || localStorage.getItem('currentMobile'),
-  //         shop: state?.shop || activeToken?.shops || activeToken?.shop,
-  //       },
-  //     })
-  //   }
-
-  //   socket.on('token:called', handleTokenCalled)
-
-  //   return () => {
-  //     socket.off('token:called', handleTokenCalled)
-  //   }
-  // }, [tokenId, activeToken, state, navigate])
-
-  // Queue status logic
- // Queue status logic
   
  useEffect(() => {
     if (!tokenId) return

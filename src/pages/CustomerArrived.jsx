@@ -240,7 +240,7 @@ export default function CustomerArrived() {
                 How was your queue experience today?
               </p>
 
-              <div className="flex justify-center items-center gap-3 min-h-[48px]">
+              <div className="flex justify-center items-center gap-3 min-h-12">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     type="button"
@@ -258,7 +258,7 @@ export default function CustomerArrived() {
                 ))}
               </div>
 
-              <div className="mt-4 text-sm font-bold text-gray-700 min-h-[22px]">
+              <div className="mt-4 text-sm font-bold text-gray-700 min-h-5.5">
                 {RATING_LABELS[rating]}
               </div>
             </div>

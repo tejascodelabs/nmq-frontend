@@ -14,12 +14,20 @@ export const getTokenByIdApi = async (tokenId) => {
   return response.data;
 };
 
-export const cancelTokenApi = async (tokenId, mobile) => {
-  const response = await api.patch(`/tokens/${tokenId}/cancel`,
-    {
-      mobile: String(mobile),
-    }
-  );
+// export const cancelTokenApi = async (tokenId, mobile) => {
+//   const response = await api.patch(`/tokens/${tokenId}/cancel`,
+//     {
+//       mobile: String(mobile),
+//     }
+//   );
+
+//   return response.data;
+// };
+
+export const cancelTokenApi = async (tokenId) => {
+  const response = await api.patch(`/tokens/${tokenId}/cancel`, {
+    id: String(tokenId),
+  });
 
   return response.data;
 };

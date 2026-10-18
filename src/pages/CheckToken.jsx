@@ -1,41 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdvertisementCarousel from '../components/AdvertisementCarousel'
-
-// Dummy active token checking function (mocking backend response)
-const checkDummyActiveToken = async (mobileNo) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Test case ke liye agar number '9999999999' ho toh active waiting token return karega
-      if (mobileNo === '9999999999') {
-        resolve({
-          id: 'token-uuid-123',
-          shopId: 1,
-          mobile: '9999999999',
-          name: 'Rahul Sharma',
-          status: 'waiting',
-          queueType: 'A',
-          tokenNo: 5,
-          groupSize: 2
-        })
-      } else if (mobileNo === '8888888888') {
-        resolve({
-          id: 'token-uuid-456',
-          shopId: 1,
-          mobile: '8888888888',
-          name: 'Amit Kumar',
-          status: 'called',
-          queueType: 'A',
-          tokenNo: 4,
-          groupSize: 3
-        })
-      } else {
-        // Koi active token nahi mila
-        resolve(null)
-      }
-    }, 800)
-  })
-}
+import api from '../api/axios' // Apne axios instance ka sahi path yahan check kar lein
 
 export default function CheckToken() {
   const navigate = useNavigate()
@@ -63,42 +29,50 @@ export default function CheckToken() {
       return setError('Enter a valid 10-digit mobile number')
     }
 
-    let token
-
     try {
       setLoading(true)
-      // Dummy service call
-      token = await checkDummyActiveToken(mobile.trim())
-    } catch (error) {
-      console.error(error)
-      setError('Unable to connect. Please try again.')
-      return
+      
+      // Real Backend API Call
+      const response = await api.get(`/tokens/checkmytoken?mobile=${mobile.trim()}`)
+      const data = response.data
+
+      if (!data.success || !data.tokens || data.tokens.length === 0) {
+        setNotFound(true)
+        return
+      }
+
+      // Latest active token ko pick karna (agar multiple ho toh pehla wala)
+      const token = data.tokens[0]
+
+      // LocalStorage mein token data save karna
+      localStorage.setItem("currentTokenId", token.id)
+      localStorage.setItem("currentMobile", token.mobile)
+      localStorage.setItem("currentShop", JSON.stringify({ shopId: token.shopId, shopName: token.shopName || "Queue Shop" }))
+
+      // Status ke mutabiq navigation ya message show karna
+      if (token.status === 'waiting') {
+        navigate('/queue-status')
+      } else if (token.status === 'called') {
+        navigate('/final-call', { state: { token, tokenId: token.id, mobile: token.mobile } })
+      } else if (token.status === 'serving') {
+        setInfoMessage('✅ You have already received your table. Please enjoy your meal!')
+        return
+      } else if (token.status === 'completed') {
+        setInfoMessage('✅ Your visit has been completed. Thank you for dining with us!')
+        return
+      } else {
+        navigate('/queue-status')
+      }
+
+    } catch (err) {
+      console.error(err)
+      if (err.response && err.response.status === 404) {
+        setNotFound(true)
+      } else {
+        setError(err.response?.data?.message || 'Unable to connect. Please try again.')
+      }
     } finally {
       setLoading(false)
-    }
-
-    if (!token) {
-      setNotFound(true)
-      return
-    }
-
-    // LocalStorage mein token save karna
-    localStorage.setItem("currentTokenId", token.id)
-    localStorage.setItem("currentMobile", token.mobile)
-    localStorage.setItem("currentShop", JSON.stringify({ shopId: token.shopId, shopName: "Dummy Misal House" }))
-
-    if (token.status === 'waiting') {
-      navigate('/queue-status')
-    } else if (token.status === 'called') {
-      navigate('/final-call', { state: { token, tokenId: token.id, mobile: token.mobile } })
-    } else if (token.status === 'serving') {
-      setInfoMessage('✅ You have already received your table. Please enjoy your meal!')
-      return
-    } else if (token.status === 'completed') {
-      setInfoMessage('✅ Your visit has been completed. Thank you for dining with us!')
-      return
-    } else {
-      navigate('/queue-status')
     }
   }
 
@@ -191,7 +165,7 @@ export default function CheckToken() {
                 No Active Token Found
               </div>
               <div className="text-xs sm:text-sm text-gray-500 mb-4 leading-relaxed">
-                Looks like you don't have an active queue.
+                Looks like you don't have an active queue today.
                 <br />
                 Browse nearby shops and join instantly.
               </div>
