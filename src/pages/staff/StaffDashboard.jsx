@@ -14,6 +14,8 @@ export default function StaffDashboard() {
   const [selectedQueues, setSelectedQueues] = useState(["ALL"]);
   const [waitingTokens, setWaitingTokens] = useState([]);
   const [pendingArrivals, setPendingArrivals] = useState([]);
+  const [timerNow, setTimerNow] = useState(Date.now());
+  const CALL_TIMEOUT_SECONDS = 120;
 
   const currentDate = new Date();
   const date = currentDate.toLocaleDateString();
@@ -34,6 +36,28 @@ export default function StaffDashboard() {
     }).length;
     return acc;
   }, {});
+
+  // Refresh the per-token countdown only while a called token still needs a response.
+  useEffect(() => {
+    const hasActiveCountdown = pendingArrivals.some((token) => {
+      const status = String(token.status || "").toLowerCase();
+      if (status !== "called") return false;
+      const startedAt = Number(token._callStartedAt) || Date.parse(token.calledAt || token.called_at || "");
+      return startedAt && (timerNow - startedAt) < CALL_TIMEOUT_SECONDS * 1000;
+    });
+
+    if (!hasActiveCountdown) return;
+    const interval = setInterval(() => setTimerNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [pendingArrivals, timerNow]);
+
+  const addCallTimer = (token) => {
+    const parsedCalledAt = Date.parse(token?.calledAt || token?.called_at || "");
+    return {
+      ...token,
+      _callStartedAt: Number(token?._callStartedAt) || (Number.isFinite(parsedCalledAt) ? parsedCalledAt : Date.now()),
+    };
+  };
 
   const toggleQueue = (queueKey) => {
     if (queueKey === "ALL") {
@@ -144,28 +168,38 @@ export default function StaffDashboard() {
     };
 
     const handleTokenCalled = (payload) => {
-      const token = unwrapToken(payload);
-      if (Number(token?.shopId ?? token?.shop_id) !== Number(shopId)) return;
+      const rawToken = unwrapToken(payload);
+      if (Number(rawToken?.shopId ?? rawToken?.shop_id) !== Number(shopId)) return;
+      const token = addCallTimer(rawToken);
 
       setWaitingTokens((prev) => prev.filter((item) => String(item.id) !== String(token.id)));
       setPendingArrivals((prev) => {
         if (prev.some((item) => String(item.id) === String(token.id))) {
-          return prev.map((item) => String(item.id) === String(token.id) ? { ...item, ...token } : item);
+          return prev.map((item) =>
+            String(item.id) === String(token.id)
+              ? { ...item, ...token, _callStartedAt: item._callStartedAt || token._callStartedAt }
+              : item
+          );
         }
         return [...prev, token];
       });
+      setTimerNow(Date.now());
     };
 
     const handleTokenImHere = (payload) => {
-      const token = unwrapToken(payload);
-      if (Number(token?.shopId ?? token?.shop_id) !== Number(shopId)) return;
+      const rawToken = unwrapToken(payload);
+      if (Number(rawToken?.shopId ?? rawToken?.shop_id) !== Number(shopId)) return;
+      const token = { ...rawToken, status: rawToken.status || "imhere" };
 
       setPendingArrivals((prev) => {
         if (prev.some((item) => String(item.id) === String(token.id))) {
-          return prev.map((item) => String(item.id) === String(token.id) ? { ...item, ...token } : item);
+          return prev.map((item) =>
+            String(item.id) === String(token.id) ? { ...item, ...token } : item
+          );
         }
         return [...prev, token];
       });
+      // status becomes imhere, so the 2-minute countdown stops and the buttons appear.
     };
 
     const handleArrivalUpdated = (payload) => {
@@ -207,9 +241,14 @@ export default function StaffDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        const calledToken = data.data;
+        const calledToken = addCallTimer(data.data);
+        setTimerNow(Date.now());
         setPendingArrivals((prev) => {
-          if (prev.some((t) => t.id === calledToken.id)) return prev;
+          if (prev.some((t) => String(t.id) === String(calledToken.id))) {
+            return prev.map((t) => String(t.id) === String(calledToken.id)
+              ? { ...t, ...calledToken, _callStartedAt: t._callStartedAt || calledToken._callStartedAt }
+              : t);
+          }
           return [...prev, calledToken];
         });
         setWaitingTokens((prev) => prev.filter((t) => t.id !== calledToken.id));
@@ -404,6 +443,11 @@ export default function StaffDashboard() {
                           })
                           .map((token) => {
                             const isImHere = token.status === "imhere" || token.status === "im-here";
+                            const callStartedAt = Number(token._callStartedAt) || Date.parse(token.calledAt || token.called_at || "");
+                            const elapsedSeconds = callStartedAt ? Math.max(0, Math.floor((timerNow - callStartedAt) / 1000)) : 0;
+                            const remainingSeconds = Math.max(0, CALL_TIMEOUT_SECONDS - elapsedSeconds);
+                            const timerExpired = !isImHere && token.status === "called" && remainingSeconds <= 0;
+                            const canFinalize = isImHere || timerExpired;
                             return (
                               <div
                                 key={token.id}
@@ -428,7 +472,7 @@ export default function StaffDashboard() {
                                   </div>
                                 </div>
 
-                                {isImHere ? (
+                                {canFinalize ? (
                                   <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
                                     <button
                                       onClick={() => updateArrivalStatus(token.id, "arrived")}
@@ -447,7 +491,7 @@ export default function StaffDashboard() {
                                 ) : (
                                   <div className="pt-2 border-t border-slate-200 text-center">
                                     <span className="text-[11px] font-semibold text-amber-700">
-                                      ⏳ Waiting for customer to confirm arrival...
+                                      ⏳ No response yet — staff actions in {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
                                     </span>
                                   </div>
                                 )}

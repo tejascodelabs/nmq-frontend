@@ -161,7 +161,7 @@ export default function FinalCall() {
           clearInterval(countdown)
           stopBell()
           setTimerExpired(true)
-          setShowNotArrivedModal(true) // Timer khatam hone par bhi modal dikhayein
+          // Do not mark the customer absent automatically. Staff will decide after 2 minutes.
           return 0
         }
         return prev - 1
@@ -170,25 +170,6 @@ export default function FinalCall() {
 
     return () => clearInterval(countdown)
   }, [timerExpired, hasConfirmed])
-
-  // Persist a final-call timeout so the staff queue and customer screen stay in sync.
-  useEffect(() => {
-    if (!timerExpired || !activeTokenId || hasConfirmed) return
-
-    let cancelled = false
-    api.patch(`/tokens/${activeTokenId}/arrival-status`, { status: 'not_arrived' })
-      .then((response) => {
-        if (cancelled) return
-        const updatedToken = response?.data?.data ?? response?.data?.token ?? response?.data
-        if (updatedToken?.id) setLiveToken(updatedToken)
-      })
-      .catch((timeoutError) => {
-        // The modal still lets the customer leave; log the failure for debugging.
-        console.error('Could not persist final-call timeout:', timeoutError?.response?.data || timeoutError)
-      })
-
-    return () => { cancelled = true }
-  }, [timerExpired, activeTokenId, hasConfirmed])
 
   const handleImHere = async () => {
     if (loading) return
