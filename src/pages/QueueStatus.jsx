@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Ticket,
@@ -15,9 +15,13 @@ import AdvertisementCarousel from '../components/AdvertisementCarousel'
 import { cancelTokenApi, getTokenByIdApi } from '../api/token.api'
 import { socket } from '../utils/socket'
 
+
 export default function QueueStatus() {
   const navigate = useNavigate()
   const location = useLocation()
+  const activeTokenRef = useRef(null);
+
+
   const { state } = location
   const tokenId = state?.tokenId || localStorage.getItem('currentTokenId')
   const [activeToken, setActiveToken] = useState(null)
@@ -27,8 +31,11 @@ export default function QueueStatus() {
   const [canceling, setCanceling] = useState(false)
   const [error, setError] = useState('')
 
-    const shop = location.state?.shop || null
+  const shop = location.state?.shop || null
 
+  useEffect(() => {
+    activeTokenRef.current = activeToken;
+  }, [activeToken]);
 
   useEffect(() => {
     if (!tokenId) {
@@ -106,51 +113,79 @@ export default function QueueStatus() {
       setShowCancelConfirm(false);
     }
   };
-  
- useEffect(() => {
-    if (!tokenId) return
 
-    const shopId = activeToken?.shopId || state?.shop?.shopId || state?.shop?.id;
-    if (shopId && socket) {
-      socket.emit('join-shop', shopId);
+
+  const shopId =
+    activeToken?.shopId ??
+    activeToken?.shop_id ??
+    location.state?.shop?.shopId ??
+    location.state?.shop?.id ??
+    activeToken?.shop?._id ??
+    activeToken?.shop?.id
+
+  useEffect(() => {
+    if (!tokenId || shopId == null) return
+
+    const joinShop = () => {
+      socket.emit('join-shop', { shopId: Number(shopId) })
     }
 
-    const handleTokenCalled = (data) => {
-      const payload = data?.data ?? data
-      const calledToken = payload?.token ?? payload
-      const calledTokenId =
-        calledToken?.id ??
-        calledToken?.tokenId ??
-        calledToken?.token_id ??
-        data?.tokenId ??
-        data?.token_id
+    socket.on('connect', joinShop)
+    if (socket.connected) joinShop()
 
-      if (calledTokenId == null || String(calledTokenId) !== String(tokenId)) {
-        return
-      }
+    return () => {
+      socket.off('connect', joinShop)
+    }
+  }, [tokenId, shopId])
 
+  useEffect(() => {
+    if (!tokenId) return
+
+    const getPayloadToken = (eventData) => {
+      const payload = eventData?.data ?? eventData
+      return payload?.token ?? payload
+    }
+
+    const handleTokenCalled = (eventData) => {
+      const calledToken = getPayloadToken(eventData)
+      const calledId = calledToken?.id ?? calledToken?._id ?? calledToken?.tokenId ?? calledToken?.token_id
+
+      if (calledId == null || String(calledId) !== String(tokenId)) return
+
+      setActiveToken(calledToken)
       navigate('/final-call', {
+        replace: true,
         state: {
-          token: calledToken?.id ? calledToken : activeToken,
+          token: calledToken,
           tokenId,
-          mobile: state?.mobile || activeToken?.mobile || localStorage.getItem('currentMobile'),
-          shop: state?.shop || activeToken?.shops || activeToken?.shop,
+          mobile: state?.mobile ?? calledToken?.mobile ?? localStorage.getItem('currentMobile'),
+          shop: state?.shop ?? calledToken?.shop ?? activeTokenRef.current?.shop ?? shop,
         },
       })
     }
 
-    socket.on('token:called', handleTokenCalled)
+    const handleTokenCancelled = (eventData) => {
+      const cancelledToken = getPayloadToken(eventData)
+      const cancelledId = cancelledToken?.id ?? cancelledToken?._id ?? cancelledToken?.tokenId ?? cancelledToken?.token_id
+      if (cancelledId == null || String(cancelledId) !== String(tokenId)) return
+
+      setActiveToken((prev) => prev ? { ...prev, ...cancelledToken, status: 'cancel' } : cancelledToken)
+    }
+
+    socket.on('token_called', handleTokenCalled)
+    socket.on('token_cancelled', handleTokenCancelled)
 
     return () => {
-      socket.off('token:called', handleTokenCalled)
+      socket.off('token_called', handleTokenCalled)
+      socket.off('token_cancelled', handleTokenCancelled)
     }
-  }, [tokenId, activeToken, state, navigate])
- 
- const groupsAhead = activeToken?.groupsAhead ?? activeToken?.groups_ahead ?? null
+  }, [tokenId, navigate, state, shop])
+
+  const groupsAhead = activeToken?.groupsAhead ?? activeToken?.groups_ahead ?? null
   const tokenStatus = activeToken?.status
 
   const getQueueStatus = () => {
-    if (tokenStatus === 'cancelled') {
+    if (tokenStatus === 'cancel' || tokenStatus === 'cancelled') {
       return {
         title: "Token Cancelled",
         colorClass: 'text-red-600',

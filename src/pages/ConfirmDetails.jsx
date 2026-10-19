@@ -162,7 +162,12 @@ export default function ConfirmDetails() {
       };
 
       const response = await createTokenApi(payload);
-      const createdToken = response?.token;
+      const createdToken =
+        response?.token ??
+        response?.data?.token ??
+        response?.data?.data?.token ??
+        response?.data ??
+        response;
 
       if (!createdToken?.id) {
         throw new Error("Token was not created.");
